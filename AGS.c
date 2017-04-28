@@ -7,9 +7,10 @@
 
 */
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
 
 //Number of genes (4 it's for example)
 const unsigned int NUMGENS = 4;
@@ -21,6 +22,7 @@ const unsigned int NUMCHROMOSOME = 10;
 typedef struct {
     char* gen; //Arreglo que contiene al gen
     //unsigned int bitgen; // Longitud del gen
+    double fenotype;
 }GEN;
 
 typedef struct {
@@ -31,7 +33,7 @@ typedef struct {
 } CHROMOSOME;
 
 typedef struct {
-    //double fenotype;
+
     CHROMOSOME* chromosomes;
     //double bestFit;
     double bestChromosome;
@@ -45,7 +47,7 @@ void Chromosome_Init(CHROMOSOME *pChromosome);
 POPULATION* Population_Init(void);
 //____________________________________
 //Obtener fenotipo
-int* Get_Fenotype(GEN* pGEN);
+int Decode_Gen(GEN* pGEN);
 //Evaluar individuo
 
 //Show poblacion
@@ -111,6 +113,20 @@ POPULATION* Population_Init(void)
     return pPopulation;
 }
 
+int Decode_Gen(GEN* pParticle)
+{
+    int i;
+    int base = 1;
+    int number = 0;
+
+    for(i = BITGEN - 1; i >= 0; i --, base *= 2)
+    {
+        number += pParticle->gen[i] * base;
+    }
+    return number;
+}
+
+
 void Show_Population(POPULATION *pPopulation)
 {
     int i, j, k;
@@ -125,8 +141,8 @@ void Show_Population(POPULATION *pPopulation)
             {
                 printf("%d",
                     pPopulation -> chromosomes[i].genes[j].gen[k]);
-                //Get_Fenotype(&(pPopulation -> chromosomes[i].genes[j]));
             }
+            //Decode_Gen(&(pPopulation -> chromosomes[i].genes[j]));
         }
         printf("\n-----\n");
     }
