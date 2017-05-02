@@ -3,6 +3,8 @@
     Artficial Inteligent, DICIS. 2017.
     April 2017
 
+    Funcion F6
+
     Martinez Lona Veronica Montserrat
 
 */
@@ -12,12 +14,17 @@
 #include <math.h>
 #include <time.h>
 
-//Number of genes (4 it's for example)
-const unsigned int NUMGENS = 4;
+#define V 4189.829101
+
+//Number of genes == number of variables of the equation
+const unsigned int NUMGENS = 10;
 //Gen lenght (for simplicity and re-use all the gens has the same length )
-const unsigned int BITGEN = 10 ;
+const unsigned int BITGEN = 9; // Para poder almacenar el numero 500
 //Number of indiduals in the populations(has to be pair)
 const unsigned int NUMCHROMOSOME = 10;
+//Limite inferior y superior del espacio de busqueda
+const int LOWERLIM = -500;
+const int UPPERLIM = 500;
 
 typedef struct {
     char* gen; //Arreglo que contiene al gen
@@ -46,8 +53,11 @@ void Chromosome_Init(CHROMOSOME *pChromosome);
 //Inicalizar poblacion
 POPULATION* Population_Init(void);
 //____________________________________
-//Obtener fenotipo
-int Decode_Gen(GEN* pGEN);
+//Decodificar gen
+int Decode_Gen(GEN* pGen);
+//Obtener el fenotipo
+double Get_Fenotype(GEN* pGen, int binMax, int range);
+
 //Evaluar individuo
 
 //Show poblacion
@@ -58,11 +68,25 @@ void Free_Population(POPULATION *pPopulation);
 int main(void)
 {
     srand(time(NULL));
+    int i, j, binMax, range;
+
     POPULATION *pPopulation;
 
     pPopulation = Population_Init();
 
     Show_Population(pPopulation);
+
+    binMax = 2 << (BITGEN - 1);
+    range = UPPERLIM - LOWERLIM;
+
+    // for(i = 0; i < NUMCHROMOSOME; i++)
+    // {
+    //     for(j = 0; j < NUMGENS; i++)
+    //     {
+    //         //pPopulation -> chromosomes[i].genes[j].fenotype = Decode_Gen(&(pPopulation -> chromosomes[i].genes[j]));
+    //     }
+    // }
+
     Free_Population(pPopulation);
 
     return 0;
@@ -113,7 +137,7 @@ POPULATION* Population_Init(void)
     return pPopulation;
 }
 
-int Decode_Gen(GEN* pParticle)
+int Decode_Gen(GEN* pGen)
 {
     int i;
     int base = 1;
@@ -121,11 +145,51 @@ int Decode_Gen(GEN* pParticle)
 
     for(i = BITGEN - 1; i >= 0; i --, base *= 2)
     {
-        number += pParticle->gen[i] * base;
+        number += pGen -> gen[i] * base;
     }
     return number;
 }
 
+double Get_Fenotype(GEN* pGen, int binMax, int range)
+{
+    int decodedGen;
+    double fenotype;
+
+    decodedGen = Decode_Gen(pGen);
+    printf("\n\tgen = %d\n", decodedGen);
+
+    fenotype = (double)decodedGen / binMax * range + LOWERLIM;
+
+    printf("\n\t Fenotype = %f\n", fenotype);
+    return fenotype;
+}
+
+void Evaluate_Chromosome(CHROMOSOME* pChromosome)
+{
+    double x;
+    double F = 0;
+
+    //Para cada gen
+    for(i = 0; i < NUMGENS; i++)
+    {
+        x = Get_Fenotype(pChromosome -> genes[i]);
+        if(x > 500 || x < -500)
+        {
+            pChromosome -> chromFit = 0;
+            break;
+        }
+
+        else
+        {
+            //F = 10V + sum(0-10){-x*sin(sqrt(|x|))}
+            F += -1 * x * sin(sqrt(abs(x)));
+        }
+    }
+
+    pChromosome -> chromFit = F + (10 * V);
+
+    return 0;
+}
 
 void Show_Population(POPULATION *pPopulation)
 {
@@ -142,7 +206,7 @@ void Show_Population(POPULATION *pPopulation)
                 printf("%d",
                     pPopulation -> chromosomes[i].genes[j].gen[k]);
             }
-            //Decode_Gen(&(pPopulation -> chromosomes[i].genes[j]));
+            Get_Fenotype(&(pPopulation -> chromosomes[i].genes[j]), 1024, 20);
         }
         printf("\n-----\n");
     }
@@ -164,6 +228,7 @@ void Free_Population(POPULATION *pPopulation)
     {
         free(pPopulation -> chromosomes[i].genes);
     }
+
     free(pPopulation -> chromosomes);
     free(pPopulation);
 }
