@@ -57,9 +57,8 @@ POPULATION* Population_Init(void);
 int Decode_Gen(GEN* pGen);
 //Obtener el fenotipo
 double Get_Fenotype(GEN* pGen, int binMax, int range);
-
 //Evaluar individuo
-
+void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range);
 //Show poblacion
 void Show_Population(POPULATION *pPopulation);
 //Liberar poblacion
@@ -74,18 +73,17 @@ int main(void)
 
     pPopulation = Population_Init();
 
-    Show_Population(pPopulation);
-
     binMax = 2 << (BITGEN - 1);
     range = UPPERLIM - LOWERLIM;
 
-    // for(i = 0; i < NUMCHROMOSOME; i++)
-    // {
-    //     for(j = 0; j < NUMGENS; i++)
-    //     {
-    //         //pPopulation -> chromosomes[i].genes[j].fenotype = Decode_Gen(&(pPopulation -> chromosomes[i].genes[j]));
-    //     }
-    // }
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        Evaluate_Chromosome(&(pPopulation -> chromosomes[i]), binMax, range);
+    }
+
+    Show_Population(pPopulation);
+
+
 
     Free_Population(pPopulation);
 
@@ -96,7 +94,7 @@ void Gen_Init(GEN *pGen)
 {
     int i, aux;
 
-    pGen -> gen = (char*) malloc (sizeof(char));
+    pGen -> gen = (char*) malloc (BITGEN*sizeof(char));
 
     for(i = 0; i < BITGEN; i++)
     {
@@ -156,23 +154,25 @@ double Get_Fenotype(GEN* pGen, int binMax, int range)
     double fenotype;
 
     decodedGen = Decode_Gen(pGen);
-    printf("\n\tgen = %d\n", decodedGen);
+    //printf("\n\tgen = %d\n", decodedGen);
 
     fenotype = (double)decodedGen / binMax * range + LOWERLIM;
 
-    printf("\n\t Fenotype = %f\n", fenotype);
+    //printf("\n\t Fenotype = %f\n", fenotype);
     return fenotype;
 }
 
-void Evaluate_Chromosome(CHROMOSOME* pChromosome)
+void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range)
 {
+    int i;
     double x;
     double F = 0;
+    double aux;
 
     //Para cada gen
     for(i = 0; i < NUMGENS; i++)
     {
-        x = Get_Fenotype(pChromosome -> genes[i]);
+        x = Get_Fenotype(&(pChromosome -> genes[i]), binMax, range);
         if(x > 500 || x < -500)
         {
             pChromosome -> chromFit = 0;
@@ -181,33 +181,40 @@ void Evaluate_Chromosome(CHROMOSOME* pChromosome)
 
         else
         {
-            //F = 10V + sum(0-10){-x*sin(sqrt(|x|))}
-            F += -1 * x * sin(sqrt(abs(x)));
+
+            F += -1 * x * sin(sqrt(fabs(x)));;
         }
     }
 
     pChromosome -> chromFit = F + (10 * V);
 
-    return 0;
+    return;
 }
+
+
 
 void Show_Population(POPULATION *pPopulation)
 {
     int i, j, k;
 
+    //Para cada cromosoma
     for(i = 0; i < NUMCHROMOSOME; i++)
     {
         printf(" Individuo %3d", i + 1);
+        //Para cada gen
         for(j = 0; j < NUMGENS; j++)
         {
             printf("\n\tGen %3d :  ", j + 1);
+            //Para cada bit
             for(k = 0; k < BITGEN; k++)
             {
                 printf("%d",
                     pPopulation -> chromosomes[i].genes[j].gen[k]);
             }
-            Get_Fenotype(&(pPopulation -> chromosomes[i].genes[j]), 1024, 20);
+
+            //Get_Fenotype(&(pPopulation -> chromosomes[i].genes[j]), 512, 1000);
         }
+        printf("\nchromosome's Fitness: %f", pPopulation -> chromosomes[i].chromFit);
         printf("\n-----\n");
     }
 }
