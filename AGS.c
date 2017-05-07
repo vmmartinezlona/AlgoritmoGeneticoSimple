@@ -61,8 +61,10 @@ int Decode_Gen(GEN* pGen);
 double Get_Fenotype(GEN* pGen, int binMax, int range);
 //Evaluar individuo
 void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range);
-//seleccion
-
+//Compute the totalFit
+int Total_Fit(POPULATION *pPopulation);
+//seleccion probability
+void Selection_Probability(POPULATION* pPopulation, int totalFit);
 //Show poblacion
 void Show_Population(POPULATION *pPopulation);
 //Liberar poblacion
@@ -83,6 +85,11 @@ int main(void)
     for(i = 0; i < NUMCHROMOSOME; i++)
     {
         Evaluate_Chromosome(&(pPopulation -> chromosomes[i]), binMax, range);
+    }
+
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        Selection_Probability(pPopulation, Total_Fit(pPopulation));
     }
 
     Show_Population(pPopulation);
@@ -148,7 +155,6 @@ int Decode_Gen(GEN* pGen)
 
     for(i = BITGEN - 1; i >= 0; i --, base *= 2)
     {
-        printf("%d\n", i);
         number += pGen -> gen[i] * base;
     }
 
@@ -194,8 +200,31 @@ void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range)
     return;
 }
 
+int Total_Fit(POPULATION *pPopulation)
+{
+    uint i;
+    double totalFit = 0;
 
+    //Por cada cromosoma
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        totalFit += pPopulation -> chromosomes[i].chromFit;
+    }
 
+    return totalFit;
+}
+
+void Selection_Probability(POPULATION* pPopulation, int totalFit)
+{
+    uint i;
+
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        pPopulation -> chromosomes[i].selProb = pPopulation -> chromosomes[i].chromFit / totalFit;
+    }
+
+    return;
+}
 
 void Show_Population(POPULATION *pPopulation)
 {
@@ -219,6 +248,7 @@ void Show_Population(POPULATION *pPopulation)
             //Get_Fenotype(&(pPopulation -> chromosomes[i].genes[j]), 512, 1000);
         }
         printf("\nchromosome's Fitness: %f", pPopulation -> chromosomes[i].chromFit);
+        printf("\nchromosome's Selection_Probability: %f", pPopulation -> chromosomes[i].selProb);
         printf("\n-----\n");
     }
 
