@@ -47,6 +47,11 @@ typedef struct {
     //double bestFit;
     double bestChromosome;
 } POPULATION;
+
+typedef struct {
+    uint index;
+    double value;
+} ARRAY;
 //____________________________________ Init
 //Inicializar gen
 void Gen_Init(GEN *pGen);
@@ -64,7 +69,11 @@ void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range);
 //Compute the totalFit
 int Total_Fit(POPULATION *pPopulation);
 //seleccion probability
-void Selection_Probability(POPULATION* pPopulation, int totalFit);
+ARRAY* Selection_Probability(POPULATION* pPopulation, int totalFit);
+//For quickSort function
+int cmpfunc (const void * a, const void * b);
+//Roulette Method
+void Roulette_Metod(POPULATION *pPopulation);
 //Show poblacion
 void Show_Population(POPULATION *pPopulation);
 //Liberar poblacion
@@ -87,11 +96,8 @@ int main(void)
         Evaluate_Chromosome(&(pPopulation -> chromosomes[i]), binMax, range);
     }
 
-    for(i = 0; i < NUMCHROMOSOME; i++)
-    {
-        Selection_Probability(pPopulation, Total_Fit(pPopulation));
-    }
-
+    //Selection_Probability(pPopulation, Total_Fit(pPopulation));
+    Roulette_Metod(pPopulation);
     Show_Population(pPopulation);
 
     Free_Population(pPopulation);
@@ -212,18 +218,70 @@ int Total_Fit(POPULATION *pPopulation)
     }
 
     return totalFit;
+
 }
 
-void Selection_Probability(POPULATION* pPopulation, int totalFit)
+ARRAY* Selection_Probability(POPULATION* pPopulation, int totalFit)
 {
     uint i;
+    ARRAY *pSelProb;
+
+    pSelProb  = (ARRAY*)  malloc (NUMCHROMOSOME * sizeof(ARRAY));
 
     for(i = 0; i < NUMCHROMOSOME; i++)
     {
-        pPopulation -> chromosomes[i].selProb = pPopulation -> chromosomes[i].chromFit / totalFit;
+        pSelProb[i].value = pPopulation -> chromosomes[i].chromFit / totalFit;
+        pSelProb[i].index = i;
     }
 
-    return;
+    return pSelProb;
+}
+
+int cmpfunc (const void * a, const void * b)
+{
+    const ARRAY *x;
+    const ARRAY *y;
+    x = a;
+    y = b;
+
+    if (x -> value < y -> value) return -1;
+    else if (x -> value > y -> value) return 1;
+    return 0;
+}
+
+
+void Roulette_Metod(POPULATION *pPopulation)
+{
+    uint i, j;
+    double rNum, sumAux;
+    ARRAY *pSelProb;
+    uint *pSelPair; //Guarda los indices de los cromosomas que seran pareja
+    pSelPair = (uint*) malloc (NUMCHROMOSOME * sizeof(uint));
+
+    pSelProb = Selection_Probability(pPopulation, Total_Fit(pPopulation));
+    qsort(pSelProb, NUMCHROMOSOME, sizeof(ARRAY), cmpfunc);
+
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        rNum = (double) rand() / RAND_MAX;
+        for(j = 0, sumAux = 0; j < NUMCHROMOSOME; j++)
+        {
+            sumAux += pSelProb[j].value;
+            if(sumAux > rNum)
+            {
+                pSelPair[i] = pSelProb[j == 0 ? j : j-1].index;
+                break;
+            }
+        }
+    }
+
+    for(i=0; i<NUMCHROMOSOME;i++)
+    {
+        printf("pSelPair = %d\n", pSelPair[i]);
+    }
+
+    free(pSelProb);
+    return ;
 }
 
 void Show_Population(POPULATION *pPopulation)
