@@ -71,7 +71,7 @@ void Free_Population(POPULATION *pPopulation);
 int main(void)
 {
     srand(time(NULL));
-    uint i, j, binMax, range;
+    uint i, binMax, range;
 
     POPULATION *pPopulation;
 
@@ -86,8 +86,6 @@ int main(void)
     }
 
     Show_Population(pPopulation);
-
-
 
     Free_Population(pPopulation);
 
@@ -144,12 +142,13 @@ POPULATION* Population_Init(void)
 
 int Decode_Gen(GEN* pGen)
 {
-    uint i;
+    int i;
     uint base = 1;
     uint number = 0;
 
     for(i = BITGEN - 1; i >= 0; i --, base *= 2)
     {
+        printf("%d\n", i);
         number += pGen -> gen[i] * base;
     }
 
@@ -162,11 +161,8 @@ double Get_Fenotype(GEN* pGen, int binMax, int range)
     double fenotype;
 
     decodedGen = Decode_Gen(pGen);
-    //printf("\n\tgen = %d\n", decodedGen);
-
     fenotype = (double)decodedGen / binMax * range + LOWERLIM;
 
-    //printf("\n\t Fenotype = %f\n", fenotype);
     return fenotype;
 }
 
