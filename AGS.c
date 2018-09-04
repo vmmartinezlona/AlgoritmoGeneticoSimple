@@ -25,17 +25,18 @@ const uint NUMGENS = 10;
 // Gen lenght (for simplicity and re-use all the gens has the same length )
 const uint BITGEN = 9; // Para poder almacenar el numero 500
 // Number of indiduals in the populations(has to be pair)
-// 10, 20, 30, 50, 100, 200
-const uint NUMCHROMOSOME = 20;
+// 10, 30, 50, 100, 200
+const uint NUMCHROMOSOME = 200;
 // Numero maximo de iteraciones
-const uint NUMMAXIT = 20;
+const uint NUMMAXIT = 500;
 // Search space limits
 const int LOWERLIM = -500;
 const int UPPERLIM = 500;
 //Probabilidad de mutacion 0.001 - 0.009
-const double pMuta = 0.005;
+const double PMUTA = 0.008;
 //Probabilidad de cruza
-const double pCross = 0.8;
+const double PCROSS = 0.8;
+const double ERROR = 0.1;
 
 typedef struct {
     char* gen;               // Arreglo que contiene al gen, bit por bit.
@@ -80,7 +81,7 @@ double Get_Fenotype(GEN* pGen, int binMax, int range);
 void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range);
 //____________________________________ Selection
 // Compute the totalFit
-int Total_Fit(POPULATION *pPopulation);
+double Total_Fit(POPULATION *pPopulation);
 // seleccion probability
 ARRAY* Selection_Probability(POPULATION* pPopulation, int totalFit);
 // For quickSort function
@@ -88,12 +89,17 @@ int cmpfunc (const void * a, const void * b);
 // Roulette Method
 int* Roulette_Metod(POPULATION *pPopulation);
 //____________________________________ Evolucion
-//Operador cruza
+// Operador cruza
 POPULATION* Cross_Population(POPULATION *pPopulation, int *selPair);
-//Mutación
+// Mutación
 void Muta_Population(CHROMOSOME *pChromosome);
-//
+//____________________________________ Actualizar mejores Es solucion?
+// Actualizar mejores
 void UpdateBest(POPULATION *pPopulation);
+//Actualizar mejor fit del cromosoma
+void UpdateChromosomeBest(POPULATION *pPopulation);
+// Actualizar mejor cromosoma de la poblacion
+void UpdatePopulationBest(POPULATION *pPopulation);
 //____________________________________ Finish
 // Show poblacion
 void Show_Population(POPULATION *pPopulation);
@@ -105,8 +111,8 @@ int main(void)
     srand(time(NULL));
     uint i, binMax, range, it;
     int bestChromosome;
+    double bestFitness;
     int *selPair;
-    double error = 0.0001;
     POPULATION *pPopulation;
 
     // Inicalizamos poblacion
@@ -123,11 +129,18 @@ int main(void)
             Evaluate_Chromosome(&(pPopulation -> chromosomes[i]), binMax, range);
         }
         UpdateBest(pPopulation);
-        Show_Population(pPopulation);
+        //Show_Population(pPopulation);
+
+        // Show bestChromosome
         bestChromosome = pPopulation -> bestChromosome;
-        printf("bestChromosome : %d , bestFitness : %f\n", bestChromosome, pPopulation -> chromosomes[bestChromosome].bestFit);
+        bestFitness    = pPopulation -> chromosomes[bestChromosome].bestFit;
+
+        // if(bestFitness == 0) printf("No ideal solution found\n");
+        //else
+        printf("bestChromosome : %d , bestFitness : %f\n", bestChromosome, bestFitness);
         printf("----------------------------Iteracion %d\n", it + 1);
-        if(pPopulation -> chromosomes[bestChromosome].bestFit - 10 * V < error) break;
+        if(fabs(bestFitness - 10 * V) <= ERROR) break;
+
         // Seleccion
         selPair = Roulette_Metod(pPopulation);
         //Curza
@@ -324,7 +337,7 @@ void Evaluate_Chromosome(CHROMOSOME* pChromosome, int binMax, int range)
     Outputs:
         Valor del fitness total
 */
-int Total_Fit(POPULATION *pPopulation)
+double Total_Fit(POPULATION *pPopulation)
 {
     uint i;
     double totalFit = 0;
@@ -387,8 +400,11 @@ int cmpfunc (const void * a, const void * b)
 
 /*
     Aplica el metodo de la ruleta
-    Cada cromosoma tiene una probabilidad de seleccion,
-    se calcula un numero random con el cual se selecciona un cromosoma y se van armando parejas
+    Cada cromosoma tiene una probabilidad de seleccion, se acomodan de menor a mayor,
+    simulando una ruleta. Se obtiene un numero random que apunta a una sección
+    específica de la ruleta, donde se encuentra un cromosoma, el index de este
+    cromosoma en guardado en un arreglo en el cual se van armando pares de
+    cromosomas para la cruza.
     Inputs:
         La poblacion
     Outputs:
@@ -415,8 +431,10 @@ int* Roulette_Metod(POPULATION *pPopulation)
         {
             //Va acumulando las probabilidades para avanzar de posicion en la ruleta
             sumAux += pSelProb[j].value;
+            // Cuando se alcanza la posicion elegida en la ruleta
             if(sumAux > rNum)
             {
+                // Se guarda el index del cromosoma para formar parejas
                 pSelPair[i] = pSelProb[j].index;
                 break;
             }
@@ -455,7 +473,7 @@ POPULATION* Cross_Population(POPULATION *pPopulation, int *selPair){
 	for(i = 0; i < nCouples; i++){
 		vCross = (double)rand()/RAND_MAX;
         // Si el valor de cruza es menor a la probabilidad de cruza hay cruza
-		if(vCross <= pCross){
+		if(vCross <= PCROSS){
 			bitCounter = 0;
             // El punto de cruza es aleatorio py diferente para cada par de parejas
 			crossPoint = (int)(((double)rand() / RAND_MAX * (nBits - 1)) + 1);
@@ -489,6 +507,15 @@ POPULATION* Cross_Population(POPULATION *pPopulation, int *selPair){
 	}
 
     free(selPair);
+
+    // Como se sobreescribe nuestra poblacion original es necesario guardar estos valores manualmente
+    newPopulation -> bestChromosome = pPopulation -> bestChromosome;
+
+    for(i = 0; i < NUMCHROMOSOME; i++)
+    {
+        newPopulation -> chromosomes[i].bestFit = pPopulation -> chromosomes[i].bestFit;
+    }
+
 	Free_Population(pPopulation);//Libera poblacion anterior
 
 	return newPopulation;
@@ -513,7 +540,7 @@ void Muta_Population(CHROMOSOME *pChromosome){
 		for(j = 0; j < BITGEN; j++){
 			vMuta = (double)rand()/RAND_MAX;
             // Si el valor de muta es menor a la probabilidad de muta hay mutacion
-			if(vMuta <= pMuta){
+			if(vMuta <= PMUTA){
                 // Calculamos el complemento mediante modulos
 				pChromosome -> genes[i].gen[j] = (pChromosome -> genes[i].gen[j] + 1) % 2;
 			}
@@ -523,23 +550,64 @@ void Muta_Population(CHROMOSOME *pChromosome){
     return;
 }
 
+/*
+    Actualiza los mejores fitness de cada cromosoma y de toda la poblacion.
+    Inputs:
+        La poblacion
+    Outputs:
+        void
+*/
 void UpdateBest(POPULATION *pPopulation)
+{
+    // Actualiza los mejores fitness de los cromosomas
+    UpdateChromosomeBest(pPopulation);
+    // Actualiza el mejor cromosoma de la poblacion
+    UpdatePopulationBest(pPopulation);
+
+    return;
+}
+
+/*
+    Actualiza los mejores fitness de cada cromosoma
+    Inputs:
+        La poblacion
+    Outputs:
+        void
+*/
+void UpdateChromosomeBest(POPULATION *pPopulation)
+{
+  unsigned int i;
+
+  //Para todos los cromosomas
+  for(i = 0; i < NUMCHROMOSOME; i++)
+  {
+    // Si el fitness de actual es mejor que el del historico de ese cromosoma
+    if(fabs(pPopulation -> chromosomes[i].chromFit - 10 * V) <= fabs(pPopulation -> chromosomes[i].bestFit - 10 * V))//ERROR)
+    {
+      pPopulation -> chromosomes[i].bestFit = pPopulation -> chromosomes[i].chromFit;
+    }
+  }
+
+  return;
+}
+
+/*
+    Actualiza los mejores fitness de toda la poblacion.
+    Inputs:
+        La poblacion
+    Outputs:
+        void
+*/
+void UpdatePopulationBest(POPULATION *pPopulation)
 {
   unsigned int i;
   //Peso del mejor cromosoma de la poblacion
   float best = pPopulation -> chromosomes[pPopulation -> bestChromosome].bestFit;
 
-  //Para todos los cromosomas
   for(i = 0; i < NUMCHROMOSOME; i++)
   {
-    //Si el fitness de actual es mayor que el del historico de ese chromosoma
-    if(pPopulation -> chromosomes[i].chromFit > pPopulation -> chromosomes[i].bestFit)
-    {
-      pPopulation -> chromosomes[i].bestFit = pPopulation -> chromosomes[i].chromFit;
-    }
-
-    // Si el mejor peso actual de la particula es mejor que el de la mejor del ejambre
-    if(pPopulation -> chromosomes[i].bestFit > best)
+    // Si el mejor fitness actual del cromosoma es mejor que el del mejor de la poblacion
+    if(fabs(pPopulation -> chromosomes[i].bestFit - 10 * V) < fabs(best - 10 * V))
     {
       //Se actualiza el id y peso del mejor
       pPopulation -> bestChromosome = i;
@@ -552,7 +620,7 @@ void UpdateBest(POPULATION *pPopulation)
 
 /*
     Imprime la poblacion completa y otros datos de interes.
-    Imprime el gen en binario y el fitness del cromosoma
+    Imprime el gen en binario y el fitness del cromosoma.
     Inputs:
         La poblacion
     Outputs:
